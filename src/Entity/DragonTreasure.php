@@ -2,26 +2,34 @@
 
 namespace App\Entity;
 
+
+use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
+use ApiPlatform\Metadata\ApiFilter;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\Link;
 use ApiPlatform\Metadata\Patch;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
+use ApiPlatform\Serializer\Filter\PropertyFilter;
 use App\Repository\DragonTreasureRepository;
 use Carbon\Carbon;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
 use Symfony\Component\Serializer\Annotation\SerializedName;
+use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: DragonTreasureRepository::class)]
 #[ApiResource(
     shortName: 'Treasure',
     description: 'A rare description',
     operations: [
-        new Get(),
+        new Get(
+            normalizationContext: ['groups' => ['treasure:read', 'treasure:item:get']]
+        ),
         new GetCollection(),
         new Post(),
         new Patch(),
@@ -35,6 +43,20 @@ use Symfony\Component\Serializer\Annotation\SerializedName;
         'groups' => ['treasure:write']
     ]
 )]
+#[ApiResource(
+    uriTemplate: '/users/{user_id}/treasures.{_format}',
+    shortName: 'Treasure',
+    operations: [new GetCollection()],
+    uriVariables: ['user_id' => new Link(
+        fromProperty: 'dragonTreasures',
+        fromClass: User::class
+    )],
+    normalizationContext: [
+        'groups' => ['treasure:read']
+    ]
+)]
+#[ApiFilter(PropertyFilter::class)]
+#[ApiFilter(SearchFilter::class, properties: ['owner.username' => 'partial'])]
 class DragonTreasure
 {
     #[ORM\Id]
@@ -43,14 +65,14 @@ class DragonTreasure
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['treasure:read', 'treasure:write'])]
+    #[Groups(['treasure:read', 'treasure:write', 'user:read', 'user:write'])]
     private ?string $name = null;
 
     #[ORM\Column(type: Types::TEXT)]
     #[Groups(['treasure:read'])]
     private ?string $description = null;
 
-    #[Groups(['treasure:read', 'treasure:write'])]
+    #[Groups(['treasure:read', 'treasure:write', 'user:read', 'user:write'])]
     #[ORM\Column]
     private ?int $value = null;
 
@@ -63,6 +85,12 @@ class DragonTreasure
 
     #[ORM\Column]
     private ?bool $isPublished = false;
+
+    #[ORM\ManyToOne(inversedBy: 'dragonTreasures')]
+    #[ORM\JoinColumn(nullable: false)]
+    #[Groups(['treasure:read', 'treasure:write'])]
+    #[Assert\Valid]
+    private ?User $owner = null;
 
     public function __construct(string $name = null)
     {
@@ -91,7 +119,7 @@ class DragonTreasure
         return $this;
     }
     #[SerializedName('description')]
-    #[Groups(['treasure:write'])]
+    #[Groups(['treasure:write', 'user:write'])]
     public function setTextDescription(string $description): self
     {
         $this->description = nl2br($description);
@@ -151,6 +179,18 @@ class DragonTreasure
     public function setIsPublished(bool $isPublished): static
     {
         $this->isPublished = $isPublished;
+
+        return $this;
+    }
+
+    public function getOwner(): ?User
+    {
+        return $this->owner;
+    }
+
+    public function setOwner(?User $owner): static
+    {
+        $this->owner = $owner;
 
         return $this;
     }
