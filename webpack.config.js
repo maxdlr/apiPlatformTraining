@@ -22,9 +22,6 @@ Encore
      */
     .addEntry('app', './assets/app.js')
 
-    // enables the Symfony UX Stimulus bridge (used in assets/bootstrap.js)
-    .enableStimulusBridge('./assets/controllers.json')
-
     // When enabled, Webpack "splits" your files into smaller pieces for greater optimization.
     .splitEntryChunks()
 
@@ -65,6 +62,7 @@ Encore
     // uncomment if you use React
     .enableReactPreset()
     .enableVueLoader(() => {}, { runtimeCompilerBuild: false })
+    .enableStimulusBridge('./assets/controllers.json')
     .configureDefinePlugin((options) => {
         options.__VUE_OPTIONS_API__ = false;
         options.__VUE_PROD_DEVTOOLS__ = false;

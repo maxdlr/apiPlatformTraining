@@ -6,7 +6,9 @@ use ApiPlatform\Doctrine\Orm\Filter\BooleanFilter;
 use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
 use ApiPlatform\Doctrine\Orm\Filter\RangeFilter;
 use ApiPlatform\Metadata\ApiFilter;
+use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Link;
@@ -15,6 +17,7 @@ use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
 use ApiPlatform\Serializer\Filter\PropertyFilter;
 use App\Repository\DragonTreasureRepository;
+use App\Validator\IsValidOwner;
 use Carbon\Carbon;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -34,9 +37,15 @@ use function Symfony\Component\String\u;
             ],
         ),
         new GetCollection(),
-        new Post(),
-        new Put(),
-        new Patch(),
+        new Post(
+            security: 'is_granted("ROLE_TREASURE_CREATE")',
+        ),
+        new Patch(
+            security: 'is_granted("EDIT", object)',
+        ),
+        new Delete(
+            security: 'is_granted("ROLE_ADMIN")',
+        ),
     ],
     formats: [
         'jsonld',
@@ -52,6 +61,9 @@ use function Symfony\Component\String\u;
         'groups' => ['treasure:write'],
     ],
     paginationItemsPerPage: 10,
+    extraProperties: [
+        'standard_put' => true,
+    ],
 )]
 #[ApiResource(
     uriTemplate: '/users/{user_id}/treasures.{_format}',
@@ -65,6 +77,9 @@ use function Symfony\Component\String\u;
     ],
     normalizationContext: [
         'groups' => ['treasure:read'],
+    ],
+    extraProperties: [
+        'standard_put' => true,
     ],
 )]
 #[ApiFilter(PropertyFilter::class)]
@@ -111,12 +126,14 @@ class DragonTreasure
 
     #[ORM\Column]
     #[ApiFilter(BooleanFilter::class)]
+    #[Groups(['admin:read', 'admin:write', 'owner:read'])]
     private bool $isPublished = false;
 
     #[ORM\ManyToOne(inversedBy: 'dragonTreasures')]
     #[ORM\JoinColumn(nullable: false)]
     #[Groups(['treasure:read', 'treasure:write'])]
     #[Assert\Valid]
+    #[IsValidOwner]
     #[ApiFilter(SearchFilter::class, strategy: 'exact')]
     private ?User $owner = null;
 
