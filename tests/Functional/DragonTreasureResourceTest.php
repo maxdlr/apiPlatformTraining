@@ -5,6 +5,7 @@ namespace App\Tests\Functional;
 use App\Entity\ApiToken;
 use App\Factory\ApiTokenFactory;
 use App\Factory\DragonTreasureFactory;
+use App\Factory\NotificationFactory;
 use App\Factory\UserFactory;
 use Zenstruck\Browser\HttpOptions;
 use Zenstruck\Browser\Json;
@@ -16,6 +17,9 @@ class DragonTreasureResourceTest extends ApiTestCase
     use ResetDatabase;
     use Factories;
 
+    /**
+     * @throws \JsonException
+     */
     public function testGetCollectionOfTreasures(): void
     {
         DragonTreasureFactory::createMany(5, [
@@ -43,6 +47,7 @@ class DragonTreasureResourceTest extends ApiTestCase
             'owner',
             'shortDescription',
             'plunderedAtAgo',
+            'isMine',
         ]);
     }
 
@@ -214,5 +219,27 @@ class DragonTreasureResourceTest extends ApiTestCase
             ->assertJsonMatches('isPublished', true)
             ->assertJsonMatches('isMine', true)
         ;
+    }
+
+    public function testPublishTreasure(): void
+    {
+        $user = UserFactory::createOne();
+        $treasure = DragonTreasureFactory::createOne([
+            'isPublished' => false,
+            'owner' => $user,
+        ]);
+
+        $this->browser()
+            ->actingAs($user)
+            ->patch('/api/treasures/'.$treasure->getId(), [
+                'json' => [
+                    'isPublished' => true,
+                ],
+            ])
+            ->assertStatus(200)
+            ->assertJsonMatches('isPublished', true)
+        ;
+
+        NotificationFactory::repository()->assert()->count(1);
     }
 }
