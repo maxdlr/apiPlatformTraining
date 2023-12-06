@@ -21,6 +21,24 @@ class DragonTreasureRepository extends ServiceEntityRepository
         parent::__construct($registry, DragonTreasure::class);
     }
 
+    public function save(DragonTreasure $entity, bool $flush = false): void
+    {
+        $this->getEntityManager()->persist($entity);
+
+        if ($flush) {
+            $this->getEntityManager()->flush();
+        }
+    }
+
+    public function remove(DragonTreasure $entity, bool $flush = false): void
+    {
+        $this->getEntityManager()->remove($entity);
+
+        if ($flush) {
+            $this->getEntityManager()->flush();
+        }
+    }
+
 //    /**
 //     * @return DragonTreasure[] Returns an array of DragonTreasure objects
 //     */
